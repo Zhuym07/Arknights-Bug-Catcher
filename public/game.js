@@ -32,21 +32,42 @@ const images = await Promise.all(['map-layout.svg','bug-orange.png','bug-yellow.
 const [background, ...sprites] = images;
 let previous = 0, shownState = '', announcedSecond = 0;
 let viewScale = 1, viewOffsetX = 0, viewOffsetY = 0;
+let resizeFrame = 0;
+
+function sceneMetrics(rect) {
+  const scale = Math.min(rect.width / WIDTH, rect.height / HEIGHT);
+  return {
+    scale,
+    width: WIDTH * scale,
+    height: HEIGHT * scale,
+    offsetX: (rect.width - WIDTH * scale) / 2,
+    offsetY: (rect.height - HEIGHT * scale) / 2,
+  };
+}
+
 start.disabled = false;
 document.querySelector('#button-label').textContent = '开始行动';
 function resize() {
-  const rect = canvas.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
+  const rect = stage.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
   const useRetro = retro && !retro.output.hidden;
   document.querySelector('.game-frame').classList.toggle('retro-active', !!useRetro);
-  canvas.width = useRetro ? 640 : Math.round(rect.width * dpr);
-  canvas.height = useRetro ? 400 : Math.round(rect.height * dpr);
-  canvas.style.width = `${rect.width}px`;
-  canvas.style.height = `${rect.height}px`;
-  retro?.resize(Math.round(rect.width * Math.min(dpr, 1.5)), Math.round(rect.height * Math.min(dpr, 1.5)));
+  const sourceWidth = useRetro ? 640 : Math.max(1, Math.round(rect.width * dpr));
+  const sourceHeight = useRetro ? 400 : Math.max(1, Math.round(rect.height * dpr));
+  if (canvas.width !== sourceWidth) canvas.width = sourceWidth;
+  if (canvas.height !== sourceHeight) canvas.height = sourceHeight;
+  retro?.resize(Math.max(1, Math.round(rect.width * Math.min(dpr, 1.5))), Math.max(1, Math.round(rect.height * Math.min(dpr, 1.5))));
   viewScale = Math.min(canvas.width / WIDTH, canvas.height / HEIGHT);
   viewOffsetX = (canvas.width - WIDTH * viewScale) / 2;
   viewOffsetY = (canvas.height - HEIGHT * viewScale) / 2;
   draw();
+}
+
+function scheduleResize() {
+  if (resizeFrame) return;
+  resizeFrame = requestAnimationFrame(() => {
+    resizeFrame = 0;
+    resize();
+  });
 }
 retroButton.addEventListener('click', () => {
   retro.output.hidden = !retro.output.hidden;
@@ -130,9 +151,11 @@ canvas.addEventListener('contextmenu',event=>event.preventDefault());
 canvas.addEventListener('pointerdown', event => {
   event.preventDefault();
   const rect=canvas.getBoundingClientRect();
-  const scale=Math.min(rect.width/WIDTH,rect.height/HEIGHT);
-  const offsetX=(rect.width-WIDTH*scale)/2, offsetY=(rect.height-HEIGHT*scale)/2;
-  round.hit((event.clientX-rect.left-offsetX)/scale,(event.clientY-rect.top-offsetY)/scale,Math.max(33,22/scale));
+  const metrics=sceneMetrics(rect);
+  const x=event.clientX-rect.left-metrics.offsetX;
+  const y=event.clientY-rect.top-metrics.offsetY;
+  if (x < 0 || y < 0 || x > metrics.width || y > metrics.height) return;
+  round.hit(x/metrics.scale,y/metrics.scale,Math.max(33,22/metrics.scale));
   updateUI(); draw();
 });
 document.querySelector('#fullscreen-button').addEventListener('click', async()=>{
@@ -140,7 +163,11 @@ document.querySelector('#fullscreen-button').addEventListener('click', async()=>
   catch {live.textContent='当前浏览器不支持全屏，可使用浏览器菜单。';}
 });
 window.addEventListener('keydown',event=>{if(event.code==='Escape')pauseRound();});
-new ResizeObserver(resize).observe(stage);
+new ResizeObserver(scheduleResize).observe(stage);
+window.addEventListener('resize', scheduleResize, { passive: true });
+window.addEventListener('orientationchange', scheduleResize, { passive: true });
+document.addEventListener('fullscreenchange', scheduleResize);
+window.visualViewport?.addEventListener('resize', scheduleResize, { passive: true });
 resize();updateUI();
 function frame(now){const dt=previous?(now-previous)/1000:0;previous=now;round.tick(dt);draw();updateUI();requestAnimationFrame(frame);}
 requestAnimationFrame(frame);
@@ -161,3 +188,4 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.ready.then(reportReady);
   } catch {document.querySelector('#offline-status').textContent='离线缓存未就绪';}
 }
+
