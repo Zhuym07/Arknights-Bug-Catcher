@@ -1,0 +1,17 @@
+{
+  "name": "源石防线",
+  "short_name": "源石防线",
+  "description": "拦截来袭的原石虫，守住中央蓝门。",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "id": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#15191f",
+  "theme_color": "#263040",
+  "icons": [
+    { "src": "./assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
