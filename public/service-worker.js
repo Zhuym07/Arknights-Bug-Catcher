@@ -1,4 +1,4 @@
-const CACHE_NAME = "originium-defense-v16";
+const CACHE_NAME = "originium-defense-v17";
 const FILES = [
   "./",
   "./index.html",
@@ -34,3 +34,4 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
 });
+
